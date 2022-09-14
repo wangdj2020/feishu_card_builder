@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>feishu_card_builder</title>
+
+    <link rel="stylesheet" href="./libs/layui-2.7.6/css/layui.css" />
+    <link rel="stylesheet" href="./css/builder.css" />
+
+    <script type="text/javascript" src="./libs/sortable/Sortable.min.js"></script>
+    <script type="text/javascript" src="./libs/vue/vue-2.6.14"></script>
+    <script type="text/javascript" src="./libs/turndown/turndown.js"></script>
+    <script type="text/javascript" src="./libs/jquery/jquery-3.2.1.min.js"></script>
+    <script type="text/javascript" src="./libs/layui-2.7.6/layui.js"></script>
+    <script type="text/javascript" src="./libs/tinymce/tinymce.min.js"></script>
+    <script type="text/javascript" src="./libs/showdown/showdown.min.js"></script>
+
+
+</head>
+
+<body>
+
+    <div class="box-all">
+
+        <div class="left-part">
+            <div class="module-title">模块组件</div>
+            <div class="module-desc"> 拖拽到右侧</div>
+            <div id="module-left" class="list-group col" style="margin-top: 10px">
+                <div class="card-module">
+                    <img class="card-module-img"
+                        src="https://lf3-cdn-tos.bytegoofy.com/goofy/lark/app/message_card_builder/static/content.1bf991ce.svg"
+                        alt="">
+                    <div class="card-module-name">内容</div>
+                </div>
+
+                <div class="card-module">
+                    <img class="card-module-img"
+                        src="https://lf3-cdn-tos.bytegoofy.com/goofy/lark/app/message_card_builder/static/image.d562b96d.svg"
+                        alt="">
+                    <div class="card-module-name">图片</div>
+                </div>
+
+                <!-- <div class="card-module">
+                <img class="card-module-img"
+                     src="https://lf3-cdn-tos.bytegoofy.com/goofy/lark/app/message_card_builder/static/button.5011966b.svg"
+                     alt="">
+                <div class="card-module-name">按钮</div>
+                </div> -->
+
+                <div class="card-module">
+                    <img class="card-module-img"
+                        src="https://lf3-cdn-tos.bytegoofy.com/goofy/lark/app/message_card_builder/static/divider.a610d593.svg"
+                        alt="">
+                    <div class="card-module-name">分割线</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mid-part" id="app">
+            <div>
+                <div class="layui-inline">
+                    <button type="button" class="layui-btn custom-btn layui-btn-normal"
+                        @click="combineFeishuCardAndSendPreview"> 向我发送预览
+                    </button>
+
+                    <button type="button" class="layui-btn custom-btn layui-btn-success" @click="saveAndBack">
+                        保存</button>
+
+                    <button type="button" class="layui-btn custom-btn layui-btn-warm" @click="showJson"> 查看JSON配置
+                    </button>
+                </div>
+
+                <div class="preview-title">卡片预览</div>
+                <div class="card-preview">
+
+                    <div class="card-title">
+                        <div class="toolbar layui-inline toolbar-title">
+                            <div class="layui-btn layui-btn-success layui-btn-xs title-edit-btn btn-edit"
+                                @click="editTitle"> 编辑
+                            </div>
+                        </div>
+                        <div v-html="title" class="title-text"
+                            :class="currentEditIndex==-1?'title-hover':'title-no-hover'" @dblclick="editTitle"></div>
+                    </div>
+                    <div class="card-body" id="card-body">
+                        <div v-for="(item , index) in cardBody" :data-id-sortable="item.realIndex">
+                            <div class="card-item" @dblclick="editItem(item.realIndex)" :id="'cardItem'+index"
+                                :class="item.selected?'card-item-box':'card-item-no-box'">
+                                <div class="toolbar layui-inline">
+                                    <div class="btn-edit layui-btn layui-btn-success layui-btn-xs"
+                                        v-if="item.showEditBtn" @click="editItem(item.realIndex)">{{ item.editBtnText }}
+                                    </div>
+                                    <div class="btn-delete layui-btn layui-btn-danger layui-btn-xs"
+                                        v-if="item.showDeleteBtn" @click="deleteItem(item.realIndex)">{{
+                                        item.deleteBtnText }}
+                                    </div>
+                                </div>
+                                <div v-html="item.html"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="right-part">
+            <div id="saveEditorTextButton" class="layui-btn custom-btn layui-btn-normal save-editor-button"
+                style="display: none"> 保存文本
+            </div>
+            <div id="editor" style="display: none"></div>
+        </div>
+    </div>
+</body>
+
+<script>
+
+    let layer = {};
+    let rightSort = {};
+
+    //https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/reference/im-v1/image/create
+    const uploadImgServiceUrl = 'your-upload-img-to-feishu-service';
+
+    //https://open.feishu.cn/document/ukTMukTMukTM/ucDO1EjL3gTNx4yN4UTM
+    const sendMessageServiceUrl = 'your-send-message-by-feishu-service';
+
+    //初始化 tinymce 编辑器（隐藏元素）
+    tinymce.init({
+        selector: '#editor',
+        language: 'zh_CN',//注意大小写
+        menubar: 'my1',
+        plugins: 'link code',
+        // toolbar: 'code | bold italic underline strikethrough link ',
+        toolbar: 'bold italic strikethrough link ',
+        fontsize_formats: '12px 14px 16px 18px 24px 36px 48px 56px 72px',
+        font_formats: '微软雅黑=Microsoft YaHei,Helvetica Neue,PingFang SC,sans-serif;苹果苹方=PingFang SC,Microsoft YaHei,sans-serif;宋体=simsun,serif;仿宋体=FangSong,serif;黑体=SimHei,sans-serif;Arial=arial,helvetica,sans-serif;Arial Black=arial black,avant garde;Book Antiqua=book antiqua,palatino;Comic Sans MS=comic sans ms,sans-serif;Courier New=courier new,courier;Georgia=georgia,palatino;Helvetica=helvetica;Impact=impact,chicago;Symbol=symbol;Tahoma=tahoma,arial,helvetica,sans-serif;Terminal=terminal,monaco;Times New Roman=times new roman,times;Verdana=verdana,geneva;Webdings=webdings;Wingdings=wingdings,zapf dingbats;知乎配置=BlinkMacSystemFont, Helvetica Neue, PingFang SC, Microsoft YaHei, Source Han Sans SC, Noto Sans CJK SC, WenQuanYi Micro Hei, sans-serif;小米配置=Helvetica Neue,Helvetica,Arial,Microsoft Yahei,Hiragino Sans GB,Heiti SC,WenQuanYi Micro Hei,sans-serif',
+        extended_valid_elements: 'script[src]',
+        template_cdate_format: '[CDATE: %m/%d/%Y : %H:%M:%S]',
+        template_mdate_format: '[MDATE: %m/%d/%Y : %H:%M:%S]',
+        toolbar_mode: 'wrap',
+        branding: false,
+        height: 250, //编辑器高度
+        min_height: 200,
+        resize: true,
+        max_height: 600,
+        link_title: false,
+        link_default_target: '_blank',
+        link_target_list: false,
+        content_style: 'p{margin:0}',
+        paste_as_text: true
+    });
+
+    //设置 html 转 markdown 规则
+    const turndownService = new TurndownService({ emDelimiter: '*' });
+    turndownService.addRule('p', {
+        filter: 'p',
+        replacement: function (content) {
+            return content + '\n'
+        }
+    })
+    turndownService.addRule('s', {
+        filter: 's',
+        replacement: function (content) {
+            return ' ~~' + content + '~~ '
+        }
+    })
+    turndownService.addRule('em', {
+        filter: 'em',
+        replacement: function (content) {
+            return '*' + content + '*'
+        }
+    })
+
+    //设置 markdown 转 html 规则
+    let markdownToHtmlConverter = new showdown.Converter({ "strikethrough": true, "simpleLineBreaks": true });
+
+    function convertMarkdownToHtml(markdown) {
+        let html = markdownToHtmlConverter.makeHtml(markdown);
+        html = html.replaceAll('</p>', '</p> <p>&nbsp</p>');
+        html = html.substr(0, html.length - 12)
+        html = html.replaceAll('<br />', '</p><p>');
+        console.log(html)
+
+        return html;
+    }
+
+    let vm = new Vue({
+        el: '#app',
+        data: {
+            currentEditIndex: 0,
+            title: "双击以编辑标题",
+            componentCount: 1,
+            cardOrder: [],
+            cardBody: [
+                {
+                    html: "双击或点击右侧按钮以编辑",
+                    selected: false,
+                    type: 'text',
+                    showEditBtn: true,
+                    editBtnText: '编辑',
+                    showDeleteBtn: true,
+                    deleteBtnText: '删除',
+                    realIndex: 0
+                }
+            ]
+        },
+        created: function () {
+            layui.use(['layer'], function () {
+                layer = layui.layer;
+                //传入 已存在的 飞书卡片以预览
+                let card = window.top.feishuCardEditExisted;
+                if (card) {
+                    // console.log(card)
+                    let cardJson = JSON.parse(card);
+                    let elements = cardJson.elements;
+                    let title = cardJson.header.title.content;
+                    vm.title = title;
+                    if (elements && elements.length) {
+                        vm.cardBody.splice(0, 1);
+                        for (let i = 0; i < elements.length; i++) {
+                            let item = elements[i];
+                            let cardItem = {};
+                            if (item.tag == 'div') {
+                                let markdown = item.text.content;
+                                cardItem = {
+                                    html: convertMarkdownToHtml(markdown),
+                                    selected: false,
+                                    type: 'text',
+                                    showEditBtn: true,
+                                    editBtnText: '编辑',
+                                    showDeleteBtn: true,
+                                    deleteBtnText: '删除',
+                                    realIndex: vm.componentCount
+                                };
+                            } else if (item.tag == 'hr') {
+                                cardItem = {
+                                    html: "<hr>",
+                                    selected: false,
+                                    type: 'hr',
+                                    showEditBtn: false,
+                                    editBtnText: '编辑',
+                                    showDeleteBtn: true,
+                                    deleteBtnText: '删除',
+                                    realIndex: vm.componentCount
+                                }
+                            } else if (item.tag == 'img') {
+                                cardItem = {
+                                    html: '<div class="layui-upload">' +
+                                        '  <div class="layui-upload-list">' +
+                                        '    <img class="layui-upload-img card-img" id="imgDisplay' + vm.componentCount + '">' +
+                                        '  </div>' +
+                                        '  <button type="button" class="layui-btn layui-btn-success layui-btn-xs btn-img-upload" id="upload' + vm.componentCount + '">上传</button>' +
+                                        '</div> ',
+                                    selected: false,
+                                    type: 'img',
+                                    showEditBtn: false,
+                                    editBtnText: '上传',
+                                    showDeleteBtn: true,
+                                    deleteBtnText: '删除',
+                                    realIndex: vm.componentCount
+                                }
+                            }
+                            vm.componentCount++;
+                            vm.cardBody.push(cardItem);
+                        }
+                    }
+                }
+            })
+            this.render();
+        },
+        mounted: function () {
+            this.initSortLeft();
+            this.initSortRight();
+        },
+        updated: function () {
+            this.handleUpdate();
+        },
+        methods: {
+            render: function () {
+            },
+            editTitle: function () {
+                this.currentEditIndex = -1;
+                this.showEditor();
+                tinymce.activeEditor.setContent(this.title);
+                if (this.cardBody && this.cardBody.length) {
+                    for (let i = 0; i < this.cardBody.length; i++) {
+                        this.cardBody[i].selected = false;
+                    }
+                }
+            },
+            editItem: function (realIndex) {
+                let index = 0;
+                let find = 0;
+                for (let i = 0; i < this.cardBody.length; i++) {
+                    if (this.cardBody[i].realIndex == realIndex) {
+                        index = i;
+                        find = 1;
+                        break;
+                    }
+                }
+                if (!find) {
+                    return;
+                }
+
+                //不处理 type 是分割线类型
+                if (this.cardBody[index] && this.cardBody[index].type == 'hr') {
+                    return;
+                }
+                //图片走上传逻辑
+                if (this.cardBody[index] && this.cardBody[index].type == 'img') {
+                    //此处无用
+                }
+                //文字编辑
+                if (this.cardBody[index] && this.cardBody[index].type == 'text') {
+                    //取消选择其他
+                    if (this.cardBody && this.cardBody.length) {
+                        for (let i = 0; i < this.cardBody.length; i++) {
+                            if (i == index) {
+                                this.cardBody[i].selected = true;
+                            } else {
+                                this.cardBody[i].selected = false;
+                            }
+                        }
+                    }
+                    console.log("editItem", index)
+                    this.showEditor();
+                    this.currentEditIndex = index;
+                    tinymce.activeEditor.setContent(this.cardBody[index].html);
+                }
+            },
+            deleteItem: function (realIndex) {
+                let index = 0;
+                let find = 0;
+                for (let i = 0; i < this.cardBody.length; i++) {
+                    if (this.cardBody[i].realIndex === realIndex) {
+                        index = i;
+                        find = 1;
+                        break;
+                    }
+                }
+                if (!find) {
+                    return;
+                }
+
+                this.cardOrder = rightSort.toArray();
+                this.cardOrder.splice(this.cardOrder.indexOf(this.cardBody[index].realIndex + ''), 1)
+                this.cardBody.splice(index, 1);
+                if (this.currentEditIndex == index) {
+                    this.hideEditor();
+                }
+                // this.handleUpdate();
+            },
+            handleUpdate: function () {
+                console.log(this.cardOrder);
+                if (this.cardOrder && this.cardOrder.length) {
+                    rightSort.sort(this.cardOrder, false);
+                    this.cardOrder = [];
+                }
+            },
+            hideEditor: function () {
+                tinymce.activeEditor.setContent('');
+                tinymce.activeEditor.hide();
+                hideSaveEditorButton();
+            },
+            showEditor: function () {
+                tinymce.activeEditor.show();
+                showSaveEditorButton();
+            },
+            saveAndBack: function () {
+                window.top.feishuCard = JSON.stringify(this.generateJson());
+                //可以自定义保存逻辑
+            },
+            initSortLeft: function () {
+                new Sortable(document.getElementById("module-left"), {
+                    group: {
+                        name: 'shared',
+                        pull: 'clone',
+                        put: false // 不允许拖拽进这个列表
+                    },
+                    animation: 150,
+                    sort: false // 设为false，禁止sort
+                });
+            },
+            initSortRight: function () {
+                rightSort = new Sortable(document.getElementById("card-body"), {
+                    group: 'shared',
+                    animation: 150,
+                    dataIdAttr: 'data-id-sortable',
+
+                    // 元素从一个列表拖拽到另一个列表
+                    onAdd: function (/**Event*/evt) {
+                        // same properties as onEnd
+                        console.log(evt)
+                        //元素变换 成为可编辑元素
+                        let newItem = {};
+                        if (evt.oldIndex == 0) {
+                            newItem = {
+                                html: "双击或点击右侧按钮以编辑",
+                                selected: false,
+                                type: 'text',
+                                showEditBtn: true,
+                                editBtnText: '编辑',
+                                showDeleteBtn: true,
+                                deleteBtnText: '删除',
+                                realIndex: vm.componentCount
+                            };
+                        } else if (evt.oldIndex == 1) {
+                            newItem = {
+                                html: '<div class="layui-upload">' +
+                                    '  <div class="layui-upload-list">' +
+                                    '    <img class="layui-upload-img card-img" id="imgDisplay' + vm.componentCount + '">' +
+                                    '  </div>' +
+                                    '  <button type="button" class="layui-btn layui-btn-success layui-btn-xs btn-img-upload" id="upload' + vm.componentCount + '">上传</button>' +
+                                    '</div> ',
+                                selected: false,
+                                type: 'img',
+                                showEditBtn: false,
+                                editBtnText: '上传',
+                                showDeleteBtn: true,
+                                deleteBtnText: '删除',
+                                realIndex: vm.componentCount
+                            }
+                        } else if (evt.oldIndex == 2) {
+                            newItem = {
+                                html: "<hr>",
+                                selected: false,
+                                type: 'hr',
+                                showEditBtn: false,
+                                editBtnText: '编辑',
+                                showDeleteBtn: true,
+                                deleteBtnText: '删除',
+                                realIndex: vm.componentCount
+                            }
+                        }
+                        evt.item.remove();
+                        let order = rightSort.toArray();
+                        order.splice(evt.newIndex, 0, vm.componentCount + '');
+                        vm.cardOrder = order;
+                        vm.cardBody.splice(evt.newIndex, 0, newItem);
+                        vm.componentCount++;
+                        refreshLayuiUpload();
+                    },
+
+                    // 列表内元素顺序更新的时候触发
+                    onUpdate: function (/**Event*/evt) {
+                        // same properties as onEnd
+                        console.log('update', evt);
+                        console.log(rightSort.toArray());
+                        refreshLayuiUpload();
+                    },
+                });
+            },
+            combineFeishuCardAndSendPreview: function () {
+                if (this.cardBody && this.cardBody.length) {
+                    let feishuCard = this.generateJson()
+                    // send request
+                    let reqPara = {};
+                    reqPara.thirdAppId = 1;
+                    let paramJson = {};
+                    paramJson.msg_type = "interactive";
+                    paramJson.card = feishuCard;
+                    reqPara.paramJson = JSON.stringify(paramJson);
+                    reqPara.id = -1;
+                    sendToMe(reqPara);
+                }
+                return '';
+            },
+            generateJson: function () {
+                let feishuCard = {};
+                feishuCard.config = {
+                    "wide_screen_mode": true
+                }
+                feishuCard.header = {
+                    template: "blue",
+                    title: {
+                        content: this.title,
+                        tag: "plain_text"
+                    }
+                };
+                feishuCard.elements = [];
+                let cardItemList = $(".card-item");
+                let orderIndexList = [];
+                for (let i = 0; i < cardItemList.length; i++) {
+                    let id = cardItemList[i].id;
+                    let index = id.substr(8);
+                    orderIndexList.push(index);
+                }
+
+                for (let i = 0; i < orderIndexList.length; i++) {
+                    let item = {};
+                    let cardItem = this.cardBody[orderIndexList[i]]
+                    if (cardItem.type == 'text') {
+                        item.tag = 'div';
+                        console.log(cardItem.html)
+                        let markdown = turndownService.turndown(cardItem.html);
+                        item.text = {
+                            tag: "lark_md",
+                            content: markdown
+                        }
+                    } else if (cardItem.type == 'img' && cardItem.imageKey) {
+                        item.tag = "img";
+                        item.img_key = cardItem.imageKey;
+                        item.alt = {
+                            content: "",
+                            tag: "plain_text"
+                        };
+                    } else if (cardItem.type == 'hr') {
+                        item.tag = 'hr'
+                    }
+                    feishuCard.elements.push(item)
+                }
+                console.log(feishuCard);
+                console.log(JSON.stringify(feishuCard));
+
+                return feishuCard;
+            },
+            showJson: function () {
+                layer.open({
+                    title: "JSON配置",
+                    area: ['500px', '300px'],
+                    content: JSON.stringify(this.generateJson())
+                });
+            }
+        }
+    });
+
+    function refreshLayuiUpload() {
+        layui.use(['upload'], function () {
+            let $ = layui.jquery,
+                upload = layui.upload;
+            //常规使用 - 普通图片上传
+            let cardBody = vm.cardBody;
+            console.log("refresh", cardBody)
+            if (cardBody && cardBody.length) {
+                for (let i = 0; i < cardBody.length; i++) {
+                    if (cardBody[i].type == 'img') {
+                        console.log("img render")
+                        if (cardBody[i].imageKey) {
+                            console.log("img render key")
+                            $("#imgDisplay" + cardBody[i].realIndex)[0].src = 'https://open.feishu.cn/open-apis/block-kit/image/' + cardBody[i].imageKey;
+                        }
+                        upload.render({
+                            elem: '#upload' + cardBody[i].realIndex,
+                            url: uploadImgServiceUrl,
+                            before: function (obj) {
+                                //预读本地文件示例，不支持ie8
+                                // demo 展示使用。请添加自己的后端服务。
+                                obj.preview(function (index, file, result) {
+                                    $("#imgDisplay" + cardBody[i].realIndex).attr('src', result); //图片链接（base64）
+                                });
+                            },
+                            done: function (res) {
+                                console.log(res)
+                                //如果上传失败
+                                if (res.success) {
+                                    let image_key = res.data[0];
+                                    console.log(image_key)
+                                    if (image_key) {
+                                        vm.cardBody[i].imageKey = image_key;
+                                        console.log($("#imgDisplay" + cardBody[i].realIndex)[0])
+                                        $("#imgDisplay" + cardBody[i].realIndex)[0].src = 'https://open.feishu.cn/open-apis/block-kit/image/' + image_key;
+                                    }
+                                }
+                            },
+                            error: function () {
+                                console.log('error', res)
+                            }
+                        });
+                    }
+                }
+            }
+
+        })
+
+    }
+
+    function sendToMe(data) {
+        $.ajax({
+            type: 'post',
+            url: sendMessageServiceUrl,
+            contentType: "application/json",
+            dataType: "json",
+            async: false,
+            data: JSON.stringify(data),
+            beforeSend: function (data) {
+            },
+            success: function (data) {
+                alert("操作成功")
+            },
+            error: function (xhr) {
+                alert("操作失败")
+            }
+        });
+    }
+
+    function showSaveEditorButton() {
+        document.getElementById("saveEditorTextButton").style = 'display: block';
+    }
+
+    function hideSaveEditorButton() {
+        document.getElementById("saveEditorTextButton").style = 'display: none';
+    }
+
+    document.getElementById("saveEditorTextButton").onclick = function () {
+        console.log("saveEditorText")
+        if (vm.currentEditIndex == -1) {
+            let content = tinymce.activeEditor.getContent({ format: 'text' });
+            if (!content) {
+                content = '双击以编辑标题';
+            }
+            console.log(content)
+            vm.title = content;
+            vm.currentEditIndex = -2;
+        } else {
+            let content = tinymce.activeEditor.getContent();
+            console.log(content)
+            if (!content) {
+                content = '双击或点击右侧按钮以编辑';
+            }
+            vm.cardBody[vm.currentEditIndex].html = content;
+            vm.cardBody[vm.currentEditIndex].selected = false;
+        }
+        vm.hideEditor();
+    };
+
+</script>
+
+</html>

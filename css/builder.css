@@ -1,0 +1,255 @@
+.box-all {
+    display: flex;
+    min-width: 1000px;
+    height: 82vh;
+    padding: 30px 15px;
+    justify-content: center;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-content: flex-start;
+    align-items: flex-start;
+}
+
+.left-part {
+    width: 20%;
+    text-align: left;
+    border-right: 1px solid #dee0e3;
+    padding-left: 1%;
+    padding-right: 2%;
+    height: 100%;
+}
+
+.module-title {
+    font-weight: 500;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.module-desc {
+    color: #646a73;
+    margin-top: 4px;
+    font-size: 14px;
+    line-height: 20px;
+}
+
+.card-module {
+    display: flex;
+    align-items: center;
+    border: 1px solid #dee0e3;
+    border-radius: 5px;
+    height: 40px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 12px;
+    cursor: pointer;
+}
+
+.card-module:hover {
+    box-shadow: 0 4px 8px rgba(31, 35, 41, .1);
+}
+
+.card-module-img {
+    width: 40px;
+    height: 40px;
+    position: relative;
+    top: 0;
+    left: -1px;
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    z-index: 1;
+}
+
+.card-module-name {
+    margin-left: 12px;
+    font-size: 14px;
+    line-height: 22px;
+}
+
+.mid-part {
+    width: 46%;
+    padding-left: 2%;
+}
+
+.right-part {
+    width: 34%;
+    padding-left: 2%;
+    padding-right: 5%;
+    padding-top: 84px;
+    position: relative;
+    z-index: 11;
+}
+
+.card-preview {
+    width: 100%;
+    margin-left: 10px;
+    display: inline-block;
+    box-sizing: border-box;
+    border: 1px solid #dee0e3;
+    border-radius: 8px;
+    overflow: hidden;
+    color: #1f2329;
+    background: #fff;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+    position: relative;
+    z-index: 1;
+}
+
+.preview-title {
+    font-size: 16px;
+    line-height: 24px;
+    font-weight: 500;
+    margin-left: 10px;
+    margin-bottom: 8px;
+    margin-top: 20px;
+}
+
+.card-title {
+    background-color: #e1eaff;
+    color: #245bdb;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 24px;
+    width: calc(100% + 2px);
+    box-sizing: border-box;
+    position: relative;
+    left: -1px;
+    top: -1px;
+    margin-bottom: -1px;
+    border-radius: 2px 8px 0 0;
+    overflow: hidden;
+    padding: 10px;
+}
+
+.card-item {
+    padding: 2px 5px;
+    margin: 2px 2px;
+    border-radius: 5px;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+}
+
+.card-img {
+    width: 100%;
+}
+
+.card-item:hover {
+    border: 1px solid #dee0e3;
+    box-shadow: 0 4px 8px rgba(31, 35, 41, .1);
+}
+
+.card-item-box {
+    border: 1px solid #dee0e3;
+    box-shadow: 0 4px 8px rgba(31, 35, 41, .1);
+}
+
+.card-item-no-box {
+    border: none;
+    box-shadow: none;
+}
+
+.card-item:hover .btn-edit {
+    display: inline-block;
+}
+
+.card-item:hover .btn-delete {
+    display: inline-block;
+}
+
+.card-body {
+    padding: 6px;
+    min-height: 100px;
+}
+
+.layui-btn-normal {
+    background-color: #3370ff;
+}
+
+.custom-btn {
+    border-radius: 8px;
+    height: 34px;
+    line-height: 33px;
+}
+
+.custom-btn + .custom-btn {
+    margin-left: 10px !important;
+}
+
+.toolbar {
+    position: absolute;
+    right: 10px;
+    display: inline;
+    top: calc(50% - 11px);
+    z-index: 10;
+}
+
+.toolbar-title {
+    top: calc(50% - 11px);
+    right: 15px;
+}
+
+.layui-btn + .layui-btn {
+    margin-left: 0px;
+}
+
+.btn-delete {
+    display: none;
+}
+
+.btn-edit {
+    display: none;
+}
+
+.save-editor-button {
+    position: absolute;
+    right: 20%;
+    top: 28.2%;
+    z-index: 12;
+}
+
+.title-edit-btn {
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 400;
+    border-radius: 5px;
+}
+
+.title-text {
+    padding: 2px;
+    user-select: none;
+}
+
+.card-title:hover .title-text {
+    border: 1px solid #f5f7f9;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(31, 35, 41, .1);
+}
+
+.title-hover {
+    border: 1px solid #f5f7f9;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(31, 35, 41, .1);
+}
+
+.title-no-hover {
+    border: none;
+    box-shadow: none;
+}
+
+.card-title:hover .btn-edit {
+    display: block;
+}
+
+.btn-img-upload {
+    position: absolute;
+    top: calc(50% - 11px);
+    right: 50px;
+    z-index: 14;
+    display: none;
+}
+
+.card-item:hover .btn-img-upload {
+    display: inline-block;
+}
